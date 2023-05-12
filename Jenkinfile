@@ -1,0 +1,83 @@
+pipeline {
+  agent any
+  stages {
+    stage('Build') {
+      steps {
+        
+        sh 'mvn clean package'
+      }
+    }
+
+    stage('Unit and Integration Tests') {
+      steps {
+        // For unit tests
+        sh 'mvn test'
+
+        // For integration tests
+        sh 'mvn integration-test'
+      }
+      post {
+        success {
+          
+          emailext body: 'Unit and Integration Tests have passed.', subject: 'Tests Passed', to: 'chandelshubham63@gmail.com'
+        }
+        failure {
+          
+          emailext body: 'Unit and Integration Tests have failed.', subject: 'Tests Failed', to: 'chandelshubham63@gmail.com', attachLog: true
+        }
+      }
+    }
+
+    stage('Code Analysis') {
+      steps {
+        
+        sh 'sonar-scanner'
+      }
+    }
+
+    stage('Security Scan') {
+      steps {
+        
+        sh 'zap-scanner scan'
+      }
+      post {
+        success {
+          
+          emailext body: 'Security Scan has passed.', subject: 'Security Scan has Passed', to: 'chandelshubham63@gmail.com'
+        }
+        failure {
+          
+          emailext body: 'Security Scan has failed.', subject: 'Security Scan has Failed', to: 'chandelshubham63@gmail.com', attachLog: true
+        }
+      }
+    }
+
+    stage('Deploy to Staging') {
+      steps {
+        
+        sh 'aws ec2 deploy'
+      }
+    }
+
+    stage('Integration Tests on Staging') {
+      steps {
+        
+        sh 'selenium run'
+      }
+    }
+
+    stage('Deploy to Production') {
+      steps {
+       
+        sh 'aws ec2 deploy'
+      }
+    }
+  }
+
+  post {
+    always {
+     
+      emailext attachLog: true, body: '', subject: "${currentBuild.result}: Pipeline Execution Status", to: 'chandelshubham63@gmail.com'
+    }
+  }
+}
